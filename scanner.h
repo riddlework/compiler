@@ -42,4 +42,7 @@ typedef enum {
   opNOT     /* ! : Op: logical-not */
 } Token;
 
+/* function prototypes */
+extern int get_token(void);
+
 #endif  /* __SCANNER_H__ */

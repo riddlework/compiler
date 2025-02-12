@@ -1,3 +1,8 @@
+/*
+ * File: scanner.c
+ * Author: Maria Fay Garcia
+ * Purpose: Implement a scanner using a table-driven FSA
+ */
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -5,9 +10,9 @@
 
 
 // function stubs
-int   get_token     (             );
-int   keywd_or_id   (             );
-int   is_final_state(int cur_state);
+int get_token     (             );
+int keywd_or_id   (             );
+int is_final_state(int cur_state);
 
 // transition functions
 int  undef();
@@ -52,20 +57,21 @@ int    t28();
 int    t29();
 int    t30();
 
-// 39 states
+// 40 states
 // 27 accept states
 
 // globals
-char *lexeme;            // a pointer to the current lexeme
-int   lval;              // the current int const val, if any
-char  buf[256];          // a temporary buffer
+       int    line_num = 1;
+       char  *lexeme;           // a pointer to the current lexeme
+static int    lval;             // the current int const val, if any
+static char   buf[256];         // a temporary buffer
 
-char *ptr;               // a pointer for the buffer
-char  cur_ch;            // the current character being read
+static char  *ptr;              // a pointer for the buffer
+static char   cur_ch;           // the current character being read
 
-int (*table[40][128])(); // the transition table
-int   cur_state;         // the current state
-int   final_states[27];  // the set of final states
+       int (*table[40][128])(); // the transition table
+       int   cur_state;         // the current state
+       int   final_states[27];  // the set of final states
 
 
 /*************** FUNCTION IMPLEMENTATION *****************/
@@ -113,9 +119,9 @@ void setup_table() {
     // states 1-27 are all accept states, so we don't have to set them
 
     // state 28 is for recognizing {letter | digit | _}
-    for (int i = 0; i < 128; i++) table[28][i]  = t3; // set all non-members
-    for (int i = 48; i < 58; i++) table[28][i]  = t2; // set digits
-    for (int i = 65; i < 91; i++) table[28][i]  = t2; // set capital letters
+    for (int i = 0; i < 128; i++)  table[28][i] = t3; // set all non-members
+    for (int i = 48; i < 58; i++)  table[28][i] = t2; // set digits
+    for (int i = 65; i < 91; i++)  table[28][i] = t2; // set capital letters
     for (int i = 97; i < 123; i++) table[28][i] = t2; // set lowercase letters
     table[28][95] = t2; // set _
     
@@ -366,14 +372,14 @@ int t17() { return 33; }
 // < -> =
 int t18() {
     lexeme = strdup("<=");
-    return opGE;
+    return opLE;
 }
 
 // < -> non-{=}
 int t19() {
     ungetc(cur_ch, stdin);
     lexeme = strdup("<");
-    return opGT;
+    return opLT;
 }
 
 // starting state -> &
@@ -394,7 +400,7 @@ int t22() {
 // starting state -> |
 int t23() { return 35; }
 
-// | -> |
+// starting state -> | int t23() { return 35; } | -> |
 int t24() {
     lexeme = strdup("||");
     return opOR;
@@ -418,7 +424,11 @@ int t28() { return UNDEF; }
 
 // starting state -> whitespace
 // whitespace -> whitespace
-int t29() { return 39; }
+int t29() {
+    // count line numbers
+    if (cur_ch == '\n') line_num++;
+    return 39;
+}
 
 // whitespace -> non-whitespace
 int t30() {
