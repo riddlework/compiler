@@ -1,0 +1,2 @@
+ERROR: LINE 6 [func_defn]: unexpected token RPAREN [lexeme = )]
+exit status: 1

@@ -1,0 +1,61 @@
+/*
+ * File: g1.txt
+ * Author: Maria Fay Garcia
+ * Purpose: Provides the grammar for the G1 language subset in a form
+ *          suitable for input to the gff FIRST/FOLLOW computation tool.
+ */
+
+%token ID kwINT LPAREN RPAREN LBRACE RBRACE SEMI COMMA
+%start prog
+%%
+
+
+prog : type ID decl_or_func prog
+     | /* epsilon */
+     ;
+     
+decl_or_func : COMMA id_list SEMI
+             | LPAREN opt_formals RPAREN LBRACE opt_var_decls opt_stmt_list RBRACE
+             | /* epsilon */
+             ;
+
+var_decl : type id_list SEMI
+         ;
+
+id_list : ID id_list_rest SEMI
+        ;
+
+id_list_rest : COMMA id_list
+             | /* epsilon */
+             ;
+
+type : kwINT
+     ;
+
+opt_formals : formals
+           | /* epsilon */
+           ;
+
+formals : type ID formals_rest
+        ;
+
+formals_rest : COMMA formals
+             | /* epsilon */
+             ;
+
+opt_var_decls : var_decl opt_var_decls
+              | /* epsilon */
+              ;
+
+opt_stmt_list : stmt opt_stmt_list
+    | /* epsilon */
+    ;
+
+stmt : fn_call SEMI
+    ;
+
+fn_call : ID LPAREN opt_expr_list RPAREN SEMI
+    ;
+
+opt_expr_list : /* epsilon */
+    ;

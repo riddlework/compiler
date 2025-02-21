@@ -1,10 +1,16 @@
-
+/*
+ * File: parser.h
+ * Author: Maria Fay Garcia
+ * Purpose: To outline type definitions for parsing
+ *          and for semantic checking.
+ */
 #ifndef __PARSER_H__
 #define __PARSER_H__
 
-/* definitions of tokens in FIRST sets */
-/*#define ID 0x1*/
-#define FIRST_FN_CALL ID
-#define FIRST_FUNC_DEFN kwINT
+typedef enum sym_tab {
+    // name
+    // type
+    // next/prev pointers
+} SymbolTable;
 
 #endif  /* __PARSER_H__ */

@@ -26,20 +26,17 @@ int gen_code_flag = 0;      /* set to 1 to generate code */
 void parse_args(int argc, char *argv[]) {
   int i;
   for (i = 0; i < argc; i++) {
-    if (argv[i][0] == '-') {
-      if (strcmp(argv[i], "--chk_decl") == 0) {
-	chk_decl_flag = 1;
+      if (argv[i][0] == '-') {
+          if (strcmp(argv[i], "--chk_decl") == 0) {
+              chk_decl_flag = 1;
+          } else if (strcmp(argv[i], "--print_ast") == 0) {
+              print_ast_flag = 1;
+          } else if (strcmp(argv[i], "--gen_code") == 0) {
+              gen_code_flag = 1;
+          } else {
+              fprintf(stderr, "Unrecognized option: %s\n", argv[i]);
+          }
       }
-      else if (strcmp(argv[i], "--print_ast") == 0) {
-	print_ast_flag = 1;
-      }
-      else if (strcmp(argv[i], "--gen_code") == 0) {
-	gen_code_flag = 1;
-      }
-      else {
-	fprintf(stderr, "Unrecognized option: %s\n", argv[i]);
-      }
-    }
   }
 }
 
