@@ -1,0 +1,2 @@
+ERROR: LINE 7 [id_list]: unexpected token LPAREN [lexeme = (]
+exit status: 1

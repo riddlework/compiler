@@ -1,0 +1,2 @@
+ERROR: LINE 8 [fn_call]: unexpected token ID [lexeme = a]
+exit status: 1

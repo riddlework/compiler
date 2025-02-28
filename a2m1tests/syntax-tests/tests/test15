@@ -1,0 +1,4 @@
+int f() { int x; int y; f(); }
+int g(int x) { f(); }
+int h(int x, int y) { int x, y; }
+int i(int x, int y, int z) { int x, y; int u, v, w; h(); }

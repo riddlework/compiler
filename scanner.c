@@ -184,8 +184,6 @@ int get_token() {
         cur_state = table[cur_state][cur_ch](); 
         if (is_final_state(cur_state)) return cur_state;
     }
-
-    return lval;
 }
 
 // determine if lexeme is a keyword (and what kind) or identifier

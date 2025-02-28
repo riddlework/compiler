@@ -1,0 +1,106 @@
+/*
+ * File: g2.txt
+ * Author: Maria Fay Garcia
+ * Purpose: Provides the grammar for the G1 language subset in a form
+ *          suitable for input to the gff FIRST/FOLLOW computation tool.
+ */
+
+%token ID kwINT LPAREN RPAREN LBRACE RBRACE SEMI COMMA kwIF kwELSE kwWHILE kwRETURN opASSG INTCON opEQ opNE opLE opLT opGE opGT
+%start prog
+%%
+
+
+prog : type ID decl_or_func prog
+     | /* epsilon */
+     ;
+     
+decl_or_func : COMMA id_list SEMI
+             | LPAREN opt_formals RPAREN LBRACE opt_var_decls opt_stmt_list RBRACE
+             | SEMI
+             ;
+
+var_decl : type id_list SEMI
+         ;
+
+id_list : ID id_list_rest
+        ;
+
+id_list_rest : COMMA ID id_list_rest
+             | /* epsilon */
+             ;
+
+type : kwINT
+     ;
+
+opt_formals : formals
+           | /* epsilon */
+           ;
+
+formals : type ID formals_rest
+        ;
+
+formals_rest : COMMA type ID formals_rest
+             | /* epsilon */
+             ;
+
+opt_var_decls : var_decl opt_var_decls
+              | /* epsilon */
+              ;
+
+opt_stmt_list : stmt opt_stmt_list
+    | /* epsilon */
+    ;
+
+stmt : ID fn_call_or_assg_stmt SEMI
+     | while_stmt
+     | if_stmt
+     | return_stmt
+     | LBRACE opt_stmt_list RBRACE
+     | SEMI
+     ;
+
+fn_call_or_assg_stmt : LPAREN opt_expr_list RPAREN
+                     | opASSG arith_exp
+                     ;
+
+if_stmt : kwIF LPAREN bool_exp RPAREN stmt else_stmt
+        ;
+
+else_stmt : kwELSE stmt
+          | /* epsilon */
+          ;
+
+while_stmt : kwWHILE LPAREN bool_exp RPAREN stmt
+           ;
+
+return_stmt : kwRETURN return_bdy SEMI
+            ;
+
+return_bdy : arith_exp
+           | /* epsilon */
+           ;
+
+opt_expr_list : expr_list
+              | /* epsilon */
+              ;
+
+expr_list : arith_exp expr_list_rest
+          ;
+
+expr_list_rest : COMMA arith_exp expr_list_rest
+               | /* epsilon */
+               ;
+
+bool_exp : arith_exp relop arith_exp
+         ;
+
+arith_exp : ID
+          | INTCON
+          ;
+
+relop : opEQ
+      | opNE
+      | opLT
+      | opGE
+      | opGT
+      ;

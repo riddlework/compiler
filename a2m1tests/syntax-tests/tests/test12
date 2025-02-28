@@ -1,0 +1,3 @@
+int f(int x, int y, int z) { int u; int v; f(); f(); }
+int f(int x, int y, int z) { int u; int v; f(); f(); }
+int f(int x, int y, int z) { int u; int v; f(); f(); }

@@ -1,0 +1,2 @@
+ERROR: LINE 12 [decl_or_func]: unexpected token kwINT [lexeme = int]
+exit status: 1

@@ -1,0 +1,2 @@
+ERROR: LINE 11 [var_decl]: unexpected token LPAREN [lexeme = (]
+exit status: 1

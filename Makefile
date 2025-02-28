@@ -1,7 +1,7 @@
 CC = gcc
 
 # OBJ = scanner.o scanner-driver.o parser.o driver.o
-OBJ = scanner.o parser.o driver.o
+OBJ = scanner.o parser.o driver.o symtab.o
 # EXEC = scanner
 EXEC = compile
 
@@ -15,7 +15,11 @@ compile: $(OBJ)
 # scanner: $(OBJ)
 # 	$(CC) $(CFLAGS) -o $(EXEC) $(OBJ)
 
-# Compiler driver.c
+# Compile symtab.c
+symtab.o: symtab.c symtab.h
+	$(CC) $(CFLAGS) -c symtab.c
+
+# Compile driver.c
 driver.o: driver.c
 	$(CC) $(CFLAGS) -c driver.c
 

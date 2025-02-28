@@ -1,0 +1,2 @@
+ERROR: LINE 6 [fn_call] Callee is not a function:  f
+exit status: 1

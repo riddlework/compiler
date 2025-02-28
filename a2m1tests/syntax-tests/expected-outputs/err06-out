@@ -1,0 +1,2 @@
+ERROR: LINE 4 [decl_or_func]: unexpected token LBRACE [lexeme = {]
+exit status: 1

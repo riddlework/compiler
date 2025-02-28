@@ -1,0 +1,2 @@
+ERROR: LINE 1 [prog]: unexpected token ID [lexeme = char]
+exit status: 1
