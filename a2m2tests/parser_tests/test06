@@ -1,0 +1,3 @@
+int a() { int x; }
+int a() { int x; int y; int z; }
+int a() { int x, y, z; }

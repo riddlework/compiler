@@ -1,0 +1,5 @@
+int p, q;
+int a(int u, int v, int w) { int x, y, z; }
+int r, s;
+int b(int u, int v, int w) { int x, y, z; }
+int t, u;

@@ -1,0 +1,3 @@
+int f() {
+  while (x > y) if (y > x) ;
+}

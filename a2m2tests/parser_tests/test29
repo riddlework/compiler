@@ -1,0 +1,3 @@
+int a(int u, int v, int w) {
+    a(w, v, u);    
+}

@@ -30,7 +30,7 @@ typedef struct symtab_entry {
 // function stubs
 void add_decl(char *lexeme, Type type, int num_args, symtab_entry *next, Scope scope);
 symtab_entry* lookup          (char *lexeme);
-symtab_entry* create_symtab_entry(char *lexeme, Scope scope, Type type, int num_args, symtab_entry *next);
+symtab_entry* create_symtab_entry(char *lexeme, Scope scope, Type type, int num_args);
 void add_entry(symtab_entry *entry_to_add, Scope scope);
 
 #endif  /* __SYMTAB_H__ */

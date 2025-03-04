@@ -1,0 +1,2 @@
+ERROR: LINE 1 [var_decl]: unexpected token ID [lexeme = y]
+exit status: 1

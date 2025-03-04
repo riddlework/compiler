@@ -1,0 +1,2 @@
+ERROR: LINE 2 [while_stmt]: unexpected token SEMI [lexeme = ;]
+exit status: 1

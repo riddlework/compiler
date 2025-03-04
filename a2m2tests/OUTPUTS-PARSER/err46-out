@@ -1,0 +1,2 @@
+ERROR: LINE 1 [if_stmt]: unexpected token RBRACE [lexeme = }]
+exit status: 1

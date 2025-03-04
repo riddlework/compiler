@@ -1,0 +1,8 @@
+int f(int u, int v, int w) { f(0, 1, 2); }
+
+int f(int u, int v, int w) { f(u, 0, v); }
+
+int f(int u, int v, int w) { f(1, x, 2); }
+
+int f(int u, int v, int w) { f(x, y, z); }
+
