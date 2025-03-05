@@ -1,3 +1,0 @@
-/* function body is {}-statement */
-
-int f() { { } }

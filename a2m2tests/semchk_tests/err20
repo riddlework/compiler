@@ -1,7 +1,0 @@
-int f(int x) {
-  return x;
-}
-
-int g(int x) {
-  f(x, x, x);    /* no. of arguments is incorrect */
-}

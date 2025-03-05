@@ -1,3 +1,0 @@
-/* return with constant argument */
-
-int f() { return 0; }

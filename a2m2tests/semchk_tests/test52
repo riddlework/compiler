@@ -1,9 +1,0 @@
-/* {} + function calls with arguments */
-
-int f(int x, int y, int z) {
-  {
-    {
-      f(0, z, 1);
-    }
-  }
-}

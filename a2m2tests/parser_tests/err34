@@ -1,3 +1,0 @@
-int x, y;
-int f(int x) { while (x < y)) ; }
-
