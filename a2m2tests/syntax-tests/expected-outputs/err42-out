@@ -1,0 +1,2 @@
+ERROR: LINE 1 [if_stmt]: unexpected token RPAREN [lexeme = )]
+exit status: 1

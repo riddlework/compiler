@@ -1,0 +1,2 @@
+ERROR: LINE 1 [arith_exp]: unexpected token SEMI [lexeme = ;]
+exit status: 1

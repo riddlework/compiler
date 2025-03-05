@@ -1,0 +1,2 @@
+ERROR: LINE 1 [var_decl]: unexpected token kwINT [lexeme = int]
+exit status: 1

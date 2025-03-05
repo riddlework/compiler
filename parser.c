@@ -3,48 +3,13 @@
  * Purpose: Implement a parser that checks the syntax for a G0 program
  */
 
-#include "scanner.h"
-#include "symtab.h"
-#include <stdio.h>
-#include <stdlib.h>
 
-// function stubs
-int                 parse(              );
-void                 prog(              );
-void         decl_or_func(char *lexeme  );
-void             var_decl(              );
-void              id_list(              );
-void         id_list_rest(              );
-void                 type(              );
-void          opt_formals(              );
-void              formals(              );
-void         formals_rest(              );
-void        opt_var_decls(              );
-void        opt_stmt_list(              );
-void                 stmt(              );
-void fn_call_or_assg_stmt(char *lexeme  );
-void              if_stmt(              );
-void            else_stmt(              );
-void           while_stmt(              );
-void          return_stmt(              );
-void           return_bdy(              );
-void        opt_expr_list(              );
-void            expr_list(              );
-void       expr_list_rest(              );
-void             bool_exp(              );
-void            arith_exp(              );
-void                relop(              );
-void                match(Token expected);
+#include "parser.h"
 
 // globals
-       Token         cur_tok;
-extern int           line_num;
-extern int           chk_decl_flag;
-       Scope     cur_scope;
-extern char         *lexeme;
-extern symtab_entry *symtab_hds[2];
-
-extern void setup_table();
+Token cur_tok;
+Scope cur_scope;
+extern
 
 // function implementations
 
@@ -73,12 +38,14 @@ void prog() {
     }
 }
 
-void decl_or_func(char * lexeme) {
+void decl_or_func(char *passed_lexeme) {
     if (cur_tok == COMMA) {
-        // LIST OF VAR DECLS
+        // VAR DECL
         
         // SEMANTIC CHECKING
-        add_decl(lexeme, VAR, 0, NULL, cur_scope);
+
+        // add declaration to symbol table
+        add_decl(__func__, passed_lexeme, VAR, NULL);
 
         match(COMMA);
         id_list();
@@ -87,12 +54,14 @@ void decl_or_func(char * lexeme) {
         // FUNCTION DECLARATION
         
         // SEMANTIC CHECKING
-        add_decl(lexeme, FUNC, 0, NULL, cur_scope);
+
+        // add declaration to symbol table
+        symtab_entry *new_entry = add_decl(__func__, passed_lexeme, FUNC, NULL);
 
         match(LPAREN);
         cur_scope = LOCAL;
 
-        opt_formals();
+        opt_formals(new_entry);
         match(RPAREN);
         match(LBRACE);
         opt_var_decls();
@@ -104,7 +73,13 @@ void decl_or_func(char * lexeme) {
         // clear local symbol table
         // TODO: free this memory -- clear local symbol table somewhere else?
         symtab_hds[LOCAL] = NULL;
+
     } else {
+        // SEMANTIC CHECKING
+
+        // add the declaration to the symbol table
+        add_decl(__func__, passed_lexeme, VAR, NULL);
+
         match(SEMI);
     }
 }
@@ -118,7 +93,9 @@ void var_decl() {
 void id_list() {
 
     // SEMANTIC CHECKING
-    add_decl(lexeme, VAR, 0, NULL, cur_scope);
+
+    // add declaration to symbol table
+    add_decl(__func__, lexeme, VAR, NULL);
 
     match(ID);
     id_list_rest();
@@ -129,7 +106,9 @@ void id_list_rest() {
         match(COMMA);
 
         // SEMANTIC CHECKING
-        add_decl(lexeme, VAR, 0, NULL, cur_scope);
+
+        // add declaration to symbol table
+        add_decl(__func__, lexeme, VAR, NULL);
 
         match(ID);
         id_list_rest();
@@ -140,32 +119,37 @@ void type() {
     match(kwINT);
 }
 
-void opt_formals() {
+// func_defn - symtab pointer for corresponding func decl
+void opt_formals(symtab_entry *func_defn) {
     if (cur_tok == kwINT) {
-        formals();
+        formals(func_defn);
     }
 }
 
-void formals() {
+// func_defn - symtab pointer for corresponding func decl
+void formals(symtab_entry *func_defn) {
     type();
 
     // SEMANTIC CHECKING
-    add_decl(lexeme, VAR, 0, NULL, cur_scope);
+    add_decl(__func__, lexeme, VAR, func_defn);
 
     match(ID);
-    formals_rest();
+    formals_rest(func_defn);
 }
 
-void formals_rest() {
+// entry - symtab pointer for corresponding func decl
+void formals_rest(symtab_entry *func_defn) {
     if (cur_tok == COMMA) {
         match(COMMA);
         type();
 
         // SEMANTIC CHECKING
-        add_decl(lexeme, VAR, 0, NULL, cur_scope);
+
+        // add declaration to symbol table
+        add_decl(__func__, lexeme, VAR, func_defn);
 
         match(ID);
-        formals_rest();
+        formals_rest(func_defn);
     }
 }
 
@@ -188,7 +172,7 @@ void stmt() {
         // record lexeme for semantic checking
         char * lexeme_to_pass = lexeme;
         match(ID);
-        fn_call_or_assg_stmt(lexeme);
+        fn_call_or_assg_stmt(lexeme_to_pass);
         match(SEMI);
     } else if (cur_tok == kwWHILE) {
         while_stmt();
@@ -205,41 +189,56 @@ void stmt() {
     }
 }
 
-void fn_call_or_assg_stmt(char *lexeme) {
-    // TODO: do i need semantic checking in this function?
+void fn_call_or_assg_stmt(char *passed_lexeme) {
     if (cur_tok == LPAREN) {
         // function call
 
         // SEMANTIC CHECKING
+        symtab_entry *entry = NULL;
         if (chk_decl_flag) {
-            symtab_entry *entry = lookup(lexeme);
+            entry = symtab_lookup(passed_lexeme);
 
             if (!entry) {
                 // variable does not exist -- throw error
-                fprintf(stderr, "SEMANTIC ERROR: LINE %d: Use before declaration of variable [%s]\n", line_num, lexeme);
-                exit(1);
+                throw_error("Use before declaration of", __func__, VAR, passed_lexeme);
+            } else if (entry->type == VAR) {
+                // an int var tried to act as a function call
+                throw_error("Callee is not a", __func__, FUNC, passed_lexeme);
             }
         }
 
         match(LPAREN);
-        opt_expr_list();
+        opt_expr_list(entry);
+
+        // MORE SEMANTIC CHECKING
+        
+        // check that func is called with correct number of arguments
+        if (chk_decl_flag) {
+            if (entry->num_args_passed != entry->num_args) {
+                throw_error("Incorrect no. of arguments in call for", __func__, FUNC, passed_lexeme);
+            } entry->num_args_passed = 0; // reset after check
+        }
+        
+
         match(RPAREN);
     } else {
         // variable assignment
         
         // SEMANTIC CHECKING
         if (chk_decl_flag) {
-            symtab_entry *entry = lookup(lexeme);
+            symtab_entry *entry = symtab_lookup(passed_lexeme);
 
             if (!entry) {
                 // variable does not exist -- throw error
-                fprintf(stderr, "SEMANTIC ERROR: LINE %d: Use before declaration of variable [%s]\n", line_num, lexeme);
-                exit(1);
+                throw_error("Use before declaration of", __func__, VAR, passed_lexeme);
+            } else if (entry->type == FUNC) {
+                // trying to assign an int to a function
+                throw_error("Assignment LHS is a", __func__, FUNC, passed_lexeme);
             }
         }
 
         match(opASSG);
-        arith_exp();
+        arith_exp(NULL);
     }
 }
 
@@ -276,51 +275,58 @@ void return_stmt() {
 
 void return_bdy() {
     if (cur_tok == SEMI) return;
-    arith_exp();
+    arith_exp(NULL);
 }
 
-void opt_expr_list() {
+void opt_expr_list(symtab_entry *func) {
     if (cur_tok == RPAREN) return;
-    expr_list();
+    expr_list(func);
 }
 
-void expr_list() {
-    arith_exp();
-    expr_list_rest();
+void expr_list(symtab_entry *func) {
+    arith_exp(func);
+    expr_list_rest(func);
 }
 
-void expr_list_rest() {
+void expr_list_rest(symtab_entry *func) {
     if (cur_tok == COMMA) {
         match(COMMA);
-        arith_exp();
-        expr_list_rest();
+        arith_exp(func);
+        expr_list_rest(func);
     }
 }
 
 void bool_exp() {
-    arith_exp();
+    arith_exp(NULL);
     relop();
-    arith_exp();
+    arith_exp(NULL);
 }
 
-void arith_exp() {
+void arith_exp(symtab_entry *func) {
     if (cur_tok == ID) {
 
         // SEMANTIC CHECKING
         if (chk_decl_flag) {
-            symtab_entry *entry = lookup(lexeme);
+
+            symtab_entry *entry = symtab_lookup(lexeme);
 
             if (!entry) {
                 // variable does not exist -- throw error
-                fprintf(stderr, "SEMANTIC ERROR: LINE %d: Use before declaration of variable [%s]\n", line_num, lexeme);
-                exit(1);
+                throw_error("Use before declaration of", __func__, VAR, lexeme);
+            } else if (entry->type == FUNC) {
+                // arithmetic operation on a func -- throw error
+                throw_error("Arithmetic operation on a", __func__, FUNC, lexeme);
+            } else if (func) {
+                // increment the number of arguments passed to the function
+                func->num_args_passed++;
             }
         }
 
         match(ID);
         
     } else {
-        // TODO: do i need semantic checking here?
+        // increment number of arguments passed to function
+        if (chk_decl_flag && func) func->num_args_passed++;
         match(INTCON);
     }
 }
@@ -330,6 +336,8 @@ void relop() {
         match(opEQ);
     } else if (cur_tok == opNE) {
         match(opNE);
+    } else if (cur_tok == opLE) {
+        match(opLE);
     } else if (cur_tok == opLT) {
         match(opLT);
     } else if (cur_tok == opGE) {
@@ -347,8 +355,10 @@ void match(Token expected) {
         cur_tok = get_token();
     } else {
         // syntax error
-        // TODO: pass rule which was being parsed to error message
-        fprintf(stderr, "SYNTAX ERROR: LINE %d: unexpected token %d [lexeme = %s]\n", line_num, cur_tok, lexeme);
+        fprintf(stderr, "SYNTAX ERROR IN LINE %d: unexpected token %d [lexeme = %s]\n", line_num, cur_tok, lexeme);
         exit(1);
     }
 }
+
+
+

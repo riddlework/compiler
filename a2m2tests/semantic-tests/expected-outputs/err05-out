@@ -1,0 +1,2 @@
+ERROR: LINE 7 [assg_or_fn_call] Callee is not a function:  f
+exit status: 1

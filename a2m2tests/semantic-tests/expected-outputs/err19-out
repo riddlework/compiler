@@ -1,0 +1,2 @@
+ERROR: LINE 6 [arith_exp] Arithmetic operation on a function:  g
+exit status: 1

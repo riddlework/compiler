@@ -1,0 +1,2 @@
+ERROR: LINE 1 [decl_or_func]: unexpected token RBRACE [lexeme = }]
+exit status: 1

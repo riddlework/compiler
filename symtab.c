@@ -1,121 +1,106 @@
 #include "symtab.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
  
-//function stubs
-void add_decl(char *lexeme, Type type, int num_args, symtab_entry *next, Scope scope);
-symtab_entry* lookup(char *lexeme);
-symtab_entry* create_symtab_entry(char *lexeme, Scope scope, Type type, int num_args);
-void add_entry(symtab_entry *entry_to_add, Scope scope);
-
-// 0 - global
-// 1 - local
 symtab_entry *symtab_hds[2];
-extern int line_num;
-extern int chk_decl_flag;
-extern Scope cur_scope;
+char *types[2] = {"GLOBAL", "LOCAL"};
+char *err_types[2] = {"SYNTAX", "SEMANTIC"};
 
 
-void add_decl(char *lexeme, Type type, int num_args, symtab_entry *next, Scope scope) {
+// adds a declaration to the symbol table or throws an error if necessary
+symtab_entry* add_decl(const char *func, char *lexeme, Type type, symtab_entry* func_defn) {
     if (chk_decl_flag) {
-        // lockup the lexeme in the stack of scopes
-        symtab_entry *entry = lookup(lexeme);
+        symtab_entry *entry = symtab_lookup(lexeme);
 
-        if (entry) {
-            // if function, throw error
-            // if variable, only throw error if scopes and types match
-            // double declaration -- throw error
-            if (entry->type == FUNC || (entry->type == type && entry->scope == scope)) {
-                // TODO: change way you track when the scopes are equal?
-                fprintf(stderr, "SEMANTIC ERROR: LINE %d: Double declaration of [%s]\n", line_num, lexeme);
-                exit(1);
-            }
+        if (entry && entry->scope == cur_scope) {
+            // double declaration, throw error
+            throw_error("Double declaration of", __func__, type, lexeme);
         } else {
-            // create a new entry in the symbol table
-            symtab_entry *new_entry = create_symtab_entry(lexeme, scope, type, 0);
+            // create a new entry in the symbol table -- add it to the desired scope
+            symtab_entry *new_entry = create_and_add_entry(lexeme, type);
 
-            // TODO: keep track of the number of arguments when type == FUNC
-            add_entry(new_entry, scope);
+            // increment parent func num of args if necessary
+            if (func_defn) func_defn->num_args++;
+
+            // return a pointer to the new entry
+            return new_entry;
         }
-    }
+    } return NULL;
 }
 
-// adds an entry to the most deeply nested scope
-void add_entry(symtab_entry *entry_to_add, Scope scope) {
+// create a new symtab entry, add it to the desired scope, and return it
+symtab_entry* create_and_add_entry(char *lexeme, Type type) {
     if (chk_decl_flag) {
-        entry_to_add->next = symtab_hds[scope];
-        symtab_hds[scope] = entry_to_add;
-    }
-}
-
-symtab_entry* create_symtab_entry(char *lexeme, Scope scope, Type type, int num_args) {
-    if (chk_decl_flag) {
-        symtab_entry* new_entry = (symtab_entry *) calloc(1, sizeof(symtab_entry *));
+        symtab_entry* new_entry = (symtab_entry *) calloc(1, sizeof(symtab_entry));
 
         new_entry->lexeme = lexeme;
-        new_entry->scope = scope;
         new_entry->type = type;
-        new_entry->num_args = num_args;
-        new_entry->next = NULL; // next entry should always be NULL
+        // num_args should be 0
+        // num_args_passed should be 0
+        new_entry->scope = cur_scope;
+        // next should be NULL
 
+        // add entry to the desired scope
+        new_entry->next = symtab_hds[cur_scope];
+        symtab_hds[cur_scope] = new_entry;
         return new_entry;
     } return NULL;
 }
 
-// perform a lookup in the symtab_entry table
-symtab_entry* lookup(char *lexeme) {
+// return most deeply nested instance of lexeme
+symtab_entry *symtab_lookup(char *lexeme) {
+    symtab_entry *to_return = scope_lookup(lexeme, LOCAL);
+    if (!to_return) to_return = scope_lookup(lexeme, GLOBAL);
+    return to_return;
+}
+
+// perform a lookup for a particular scope in the symbol table
+symtab_entry* scope_lookup(char *lexeme, Scope scope) {
     if (chk_decl_flag) {
-        symtab_entry *cur = symtab_hds[cur_scope];
+        symtab_entry *cur = symtab_hds[scope];
         if (!cur) return NULL;
-        while ((cur = cur->next)) {
+        while (cur) {
             if (strcmp(lexeme, cur->lexeme) == 0) return cur;
+            cur = cur->next;
         }
     } return NULL;
 }
 
-
-
-
-// OLD FUNCTIONS
-//function stubs
-void add_symtab_entry(char *lexeme, Type type, int scope_type);
-void in_table(char *lexeme, Type type, int scope_type);
-
-
-// add a new symtab_entry to the symtab_entry table
-void add_symtab_entry(char *lexeme, Type type, int scope_type) {
-    if (chk_decl_flag) {
-        // create symtab_entry struct
-        symtab_entry *sym = create_symtab_entry(lexeme, type, NULL);
-
-
-        // check for double declaration in the same scope
-        if (lookup(sym->lexeme, sym->type, scope_type)) {
-            fprintf(stderr, "DUPLICATE symtab_entry ERROR ON LINE %d.\n", line_num);
-            exit(1);
-        }
-        
-        // symtab_entry is legal -- add to symtab_entry table
-        push_symtab_entry(sym, scope_type);
-    }
+// print an err msg to stderr and exit the program
+void throw_error(char *err_msg, const char *func, Type type, char *lexeme) {
+    fprintf(stderr,
+            "SEMANTIC ERROR IN LINE %d [%s] %s %s [%s]\n",
+            line_num,
+            func,
+            err_msg,
+            types[type],
+            lexeme);
+    exit(1);
 }
 
-void in_table(char *lexeme, Type type, int scope_type) {
-    if (chk_decl_flag) {
-        switch (type) {
-            case FUNC:
-                // search global table
-                if (!lookup(lexeme, type, GLOBAL)) {
-                    fprintf(stderr, "CALL BEFORE USE ERROR ON LINE %d.\n", line_num);
-                    /*dump_table(GLOBAL);*/
-                    /*dump_table(LOCAL);*/
-                    exit(1);
-                }
-                break;
-            case INT:
-                break;
-        }
+void dump_symtab() {
+    char *types[2] = {"FUNC", "VAR"};
+    char *scopes[2] = {"GLOBAL", "LOCAL"};
+
+    symtab_entry *cur = symtab_hds[LOCAL];
+
+    printf("--------- GLOBAL SCOPE ----------\n");
+    cur = symtab_hds[GLOBAL];
+    while (cur) {
+        printf("-------------\n%s\n%s\n%d\n%s\n------------\n",
+                cur->lexeme,
+                types[cur->type],
+                cur->num_args,
+                scopes[cur->scope]);
+        cur = cur->next;
+    }
+
+    printf("--------- LOCAL SCOPE -----------\n");
+    while (cur) {
+        printf("-------------\n%s\n%s\n%d\n%s\n------------\n",
+                cur->lexeme,
+                types[cur->type],
+                cur->num_args,
+                scopes[cur->scope]);
+        cur = cur->next;
     }
 }
 

@@ -1,0 +1,2 @@
+ERROR: LINE 1 [assg_or_fn_call]: unexpected token INTCON [lexeme = 2]
+exit status: 1
