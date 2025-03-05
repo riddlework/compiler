@@ -9,7 +9,6 @@
 // globals
 Token cur_tok;
 Scope cur_scope;
-extern
 
 // function implementations
 
