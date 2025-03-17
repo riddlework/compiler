@@ -3,59 +3,7 @@
  * Author: Maria Fay Garcia
  * Purpose: Implement a scanner using a table-driven FSA
  */
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include "scanner.h"
-
-
-// function stubs
-int get_token     (             );
-int keywd_or_id   (             );
-int is_final_state(int cur_state);
-
-// transition functions
-int  undef();
-int     t1();
-int     t2();
-int     t3();
-int     t4();
-int     t5();
-int     t6();
-int lparen();
-int rparen();
-int lbrace();
-int rbrace();
-int  comma();
-int   semi();
-int     t7();
-int     t8();
-int     t9();
-int    add();
-int    sub();
-int    mul();
-int    t10();
-int divide();
-int    t11();
-int    t12();
-int    t13();
-int    t14();
-int    t15();
-int    t16();
-int    t17();
-int    t18();
-int    t19();
-int    t20();
-int    t21();
-int    t22();
-int    t23();
-int    t24();
-int    t25();
-int    t26();
-int    t27();
-int    t28();
-int    t29();
-int    t30();
 
 // 40 states
 // 27 accept states
@@ -63,7 +11,7 @@ int    t30();
 // globals
        int    line_num = 1;
        char  *lexeme;           // a pointer to the current lexeme
-static int    lval;             // the current int const val, if any
+       int    intcon;             // the current int const val, if any
 static char   buf[256];         // a temporary buffer
 
 static char  *ptr;              // a pointer for the buffer
@@ -248,7 +196,7 @@ int t6() {
     *ptr = '\0';
     ungetc(cur_ch, stdin);
     lexeme = strdup(buf);
-    lval = atoi(buf);
+    intcon = atoi(buf);
     return INTCON;
 }
 
