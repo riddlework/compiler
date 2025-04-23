@@ -1,0 +1,78 @@
+
+FIRST sets:
+  arith_exp:   opSUB LPAREN ID INTCON 
+  arith_exp_1a:   <epsilon> opADD opSUB 
+  arith_exp_2:   opSUB LPAREN ID INTCON 
+  arith_exp_2a:   <epsilon> opMUL opDIV 
+  arith_exp_3:   opSUB LPAREN ID INTCON 
+  arith_exp_4:   LPAREN ID INTCON 
+  as:   opADD opSUB 
+  bool_exp:   opSUB LPAREN ID INTCON 
+  bool_exp_1a:   opOR <epsilon> 
+  bool_exp_2:   opSUB LPAREN ID INTCON 
+  bool_exp_2a:   opAND <epsilon> 
+  bool_exp_arith:   opSUB LPAREN ID INTCON 
+  decl_or_func:   COMMA LPAREN SEMI 
+  else_stmt:   kwELSE <epsilon> 
+  expr_list:   opSUB LPAREN ID INTCON 
+  expr_list_rest:   COMMA <epsilon> 
+  fn_call_or_assg_stmt:   LPAREN opASSG 
+  formals:   kwINT 
+  formals_rest:   COMMA <epsilon> 
+  id_list:   ID 
+  id_list_rest:   COMMA <epsilon> 
+  if_stmt:   kwIF 
+  md:   opMUL opDIV 
+  opt_expr_list:   <epsilon> opSUB LPAREN ID INTCON 
+  opt_fn_call:   LPAREN <epsilon> 
+  opt_formals:   <epsilon> kwINT 
+  opt_stmt_list:   <epsilon> ID kwIF kwRETURN LBRACE SEMI kwWHILE 
+  opt_var_decls:   <epsilon> kwINT 
+  prog:   <epsilon> kwINT 
+  relop:   opEQ opNE opLT opGE opGT 
+  return_bdy:   <epsilon> opSUB LPAREN ID INTCON 
+  return_stmt:   kwRETURN 
+  stmt:   ID kwIF kwRETURN LBRACE SEMI kwWHILE 
+  type:   kwINT 
+  val:   ID INTCON 
+  var_decl:   kwINT 
+  while_stmt:   kwWHILE 
+
+FOLLOW sets:
+  arith_exp:   RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  arith_exp_1a:   RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  arith_exp_2:   opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  arith_exp_2a:   opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  arith_exp_3:   opMUL opDIV opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  arith_exp_4:   opMUL opDIV opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  as:   opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  bool_exp:   RPAREN 
+  bool_exp_1a:   RPAREN 
+  bool_exp_2:   opOR RPAREN 
+  bool_exp_2a:   opOR RPAREN 
+  bool_exp_arith:   opAND opOR RPAREN 
+  decl_or_func:   kwINT <EOF> 
+  else_stmt:   kwELSE ID kwIF kwRETURN LBRACE SEMI kwWHILE RBRACE 
+  expr_list:   RPAREN 
+  expr_list_rest:   RPAREN 
+  fn_call_or_assg_stmt:   SEMI 
+  formals:   RPAREN 
+  formals_rest:   RPAREN 
+  id_list:   SEMI 
+  id_list_rest:   SEMI 
+  if_stmt:   kwELSE ID kwIF kwRETURN LBRACE SEMI kwWHILE RBRACE 
+  md:   opMUL opDIV opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  opt_expr_list:   RPAREN 
+  opt_fn_call:   opMUL opDIV opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  opt_formals:   RPAREN 
+  opt_stmt_list:   RBRACE 
+  opt_var_decls:   ID kwIF kwRETURN LBRACE SEMI kwWHILE RBRACE 
+  prog:   <EOF> 
+  relop:   opSUB LPAREN ID INTCON 
+  return_bdy:   SEMI 
+  return_stmt:   kwELSE ID kwIF kwRETURN LBRACE SEMI kwWHILE RBRACE 
+  stmt:   kwELSE ID kwIF kwRETURN LBRACE SEMI kwWHILE RBRACE 
+  type:   ID 
+  val:   opMUL opDIV opADD opSUB RPAREN opEQ opNE opLT opGE opGT opAND opOR COMMA SEMI 
+  var_decl:   kwINT ID kwIF kwRETURN LBRACE SEMI kwWHILE RBRACE 
+  while_stmt:   kwELSE ID kwIF kwRETURN LBRACE SEMI kwWHILE RBRACE 

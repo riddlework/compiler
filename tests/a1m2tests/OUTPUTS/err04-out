@@ -1,0 +1,2 @@
+ERROR: LINE 2 [func_defn]: unexpected token LPAREN [lexeme = (]
+exit status: 1

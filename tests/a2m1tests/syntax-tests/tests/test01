@@ -1,0 +1,5 @@
+int a;
+int b() { }
+
+int c, d, e;
+int f() { }

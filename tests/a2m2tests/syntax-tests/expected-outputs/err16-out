@@ -1,0 +1,2 @@
+ERROR: LINE 2 [decl_rest]: unexpected token kwINT [lexeme = int]
+exit status: 1

@@ -1,0 +1,13 @@
+/* a set of functions definitions from the G0 grammar */
+
+int f() { }
+
+int f() { a(); }
+
+int g() { }
+
+int g() { b(); c(); }
+
+int h() { }
+
+int h() { d(); e(); f(); }

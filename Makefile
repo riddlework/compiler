@@ -1,7 +1,7 @@
 CC = gcc
 
 # OBJ = scanner.o scanner-driver.o parser.o driver.o
-OBJ = scanner.o parser.o driver.o symtab.o ast.o ast-print.o
+OBJ = scanner.o parser.o driver.o symtab.o ast.o ast-print.o code_gen.o
 # EXEC = scanner
 EXEC = compile
 
@@ -17,8 +17,13 @@ scanner: $(OBJ)
 	$(CC) $(CFLAGS) -o $(EXEC) $(OBJ)
 
 # OBJECT FILES
+
+# compile code_gen.c
+code_gen.o: code_gen.c code_gen.h ast.h
+	$(CC) $(CFLAGS) -c code_gen.c
+
 # compile ast.c
-ast.o: ast.c ast.h
+ast.o: ast.c ast.h code_gen.h
 	$(CC) $(CFLAGS) -c ast.c
 
 ast-print.o: ast-print.c ast.h

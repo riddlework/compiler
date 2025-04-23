@@ -10,6 +10,7 @@
 
 // globals
        int    line_num = 1;
+       int    col_num  = 0;
        char  *lexeme;           // a pointer to the current lexeme
        int    intcon;             // the current int const val, if any
 static char   buf[256];         // a temporary buffer
@@ -131,6 +132,9 @@ int get_token() {
         if (cur_ch == EOF) return EOF;
         cur_state = table[cur_state][cur_ch](); 
         if (is_final_state(cur_state)) return cur_state;
+
+        // increment column number
+        col_num++;
     }
 }
 
@@ -371,8 +375,10 @@ int t28() { return UNDEF; }
 // starting state -> whitespace
 // whitespace -> whitespace
 int t29() {
-    // count line numbers
-    if (cur_ch == '\n') line_num++;
+    if (cur_ch == '\n') {
+        col_num = 0; // reset column count
+        line_num++;  // increment line count
+    }
     return 39;
 }
 

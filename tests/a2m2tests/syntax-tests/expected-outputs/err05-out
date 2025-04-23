@@ -1,0 +1,2 @@
+ERROR: LINE 1 [decl_rest]: unexpected token RPAREN [lexeme = )]
+exit status: 1

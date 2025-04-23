@@ -1,0 +1,2 @@
+ERROR: LINE 4 [decl_or_func]: unexpected token ID [lexeme = x]
+exit status: 1

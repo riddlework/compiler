@@ -1,0 +1,2 @@
+ERROR: LINE 1 [decl_rest]: unexpected token LBRACE [lexeme = {]
+exit status: 1

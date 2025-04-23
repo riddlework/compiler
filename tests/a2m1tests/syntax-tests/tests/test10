@@ -1,0 +1,1 @@
+int f(int x) { int u, v; f(); f(); }

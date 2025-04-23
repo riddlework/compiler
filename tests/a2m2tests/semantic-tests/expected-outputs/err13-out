@@ -1,0 +1,2 @@
+ERROR: LINE 2 [assg_or_fn_call] Assignment LHS is a function:  f
+exit status: 1

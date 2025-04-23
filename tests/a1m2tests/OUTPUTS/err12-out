@@ -1,0 +1,2 @@
+ERROR: LINE 7 [fn_call]: unexpected token RPAREN [lexeme = )]
+exit status: 1

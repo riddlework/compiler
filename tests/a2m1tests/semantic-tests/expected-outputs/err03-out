@@ -1,0 +1,2 @@
+ERROR: LINE 2: multiple declarations of x
+exit status: 1

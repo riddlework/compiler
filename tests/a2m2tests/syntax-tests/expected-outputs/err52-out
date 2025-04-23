@@ -1,0 +1,2 @@
+ERROR: LINE 1 [decl_or_func]: unexpected token kwELSE [lexeme = else]
+exit status: 1

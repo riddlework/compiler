@@ -1,0 +1,4 @@
+int a() { int x, y, z; }
+int p, q;
+int b(int u, int v) { int x, y, z; }
+

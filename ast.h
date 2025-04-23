@@ -12,8 +12,6 @@
  *                                AST NODE TYPES                               *
  *                                                                             *
  *******************************************************************************/
-#include "symtab.h"
-
 typedef enum {
   DUMMY,            /* a placeholder */
   FUNC_DEF,         /* function definition */
@@ -41,16 +39,35 @@ typedef enum {
   OR                /* || */
 } NodeType;
 
+// TODO: IS THIS NEEDED?
 extern int print_ast_flag;
 
+// forward declarations -- to remedy circular dependency
+typedef struct symtab_entry symtab_entry;
+typedef struct instr Instr;
+
 typedef struct ASTNode {
-           NodeType      type;
-           int           intcon;
-           symtab_entry *symtab_entry;
-    struct ASTNode      *child0, 
-                        *child1,
-                        *child2;
+           // for semantic checking
+           int line_num;
+           int col_num;
+           char *lexeme;
+           symtab_entry *symtab_entry; // also for code gen
+
+           NodeType              type;
+           int                 intcon;
+    struct ASTNode      *      child0, 
+                        *      child1,
+                        *      child2;
+    
+           // for three address code
+           Instr        *   code_head;
+           Instr        *   code_tail;
+    struct symtab_entry *       place;
 } ASTNode;
+
+
+// we still need to include code_gen.h for the function stubs
+#include "code_gen.h"
 
 /*******************************************************************************
  *                                                                             *

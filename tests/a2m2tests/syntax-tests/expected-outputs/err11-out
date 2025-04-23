@@ -1,0 +1,2 @@
+ERROR: LINE 1 [assg_or_fn_call]: unexpected token SEMI [lexeme = ;]
+exit status: 1

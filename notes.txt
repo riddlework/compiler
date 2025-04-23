@@ -1,0 +1,52 @@
+important details:
+    -- execution should return from a function if it falls of the end of the functions body
+    -- gen_three_addr_code takes a lbl_num for if and while stmts. this has nothing
+        to do with func calls
+    -- gen_three_addr_code takes a true and false lbl num, for use later??? for code
+        optimization or something
+
+code gen details:
+enter, leave:
+    -- child0: decls (not needed)
+    -- child1: func body
+
+    -- dest: f
+
+func_call:
+    -- child0: expr_list
+
+    -- src1: f
+    -- src2: num_args for f
+
+assg:
+    -- symtab_entry: identifier
+    -- child0: arith_exp (recursive)
+
+    -- dest: LHS
+    -- src1: RHS
+
+stmt-list:
+    -- child0: stmt
+    -- child1: stmt_list
+
+expr-list:
+    -- child0: arith_expr
+    -- child1: expr_list_rest
+
+bool-expr (relops):
+    -- child0: LHS
+    -- child1: RHS
+
+
+important slides:
+
+from code generation 1
+    -- 54: for when we need return statements
+
+TODO:
+1. change if statements to L_then, L_else, L_after format
+2. change while loops to L_top, L_body, L_after format
+
+
+current mistake is either in get_retval, set_retval, or return
+do we need "jr $ra" in return *and* leave?

@@ -1,0 +1,6 @@
+int u1, u2, u3;
+int a(int x, int y) { }
+int v1, v2;
+int b(int x, int y, int u, int v) { }
+
+int w1, w2;

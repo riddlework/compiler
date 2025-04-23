@@ -1,0 +1,2 @@
+ERROR: LINE 2 [prog]: unexpected token LPAREN [lexeme = (]
+exit status: 1

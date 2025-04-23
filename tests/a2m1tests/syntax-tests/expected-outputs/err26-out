@@ -1,0 +1,2 @@
+ERROR: LINE 11 [id_list_rest]: unexpected token RBRACE [lexeme = }]
+exit status: 1

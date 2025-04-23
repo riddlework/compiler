@@ -3,25 +3,25 @@
 
 // return the NodeType of the AST node pointed to by ptr
 NodeType ast_node_type(void *ptr) {
-    ASTNode* ast_node = (ASTNode *) ptr;
+    ASTNode* ast_node = (ASTNode *)ptr;
     return ast_node->type;
 }
 
 // return a ptr to the name of the function
 char *func_def_name(void *ptr) {
-    ASTNode* ast_node = (ASTNode *) ptr;
+    ASTNode* ast_node = (ASTNode *)ptr;
     return ast_node->symtab_entry->lexeme;
 }
 
 // retrun the number of formal parameters for the function
 int func_def_nargs(void *ptr) {
-    ASTNode* ast_node = (ASTNode *) ptr;
+    ASTNode* ast_node = (ASTNode *)ptr;
     return ast_node->symtab_entry->num_args;
 }
 
 // return a ptr to the ast of the body of the function
 void *func_def_body(void *ptr) {
-    ASTNode* ast_node = (ASTNode *) ptr;
+    ASTNode* ast_node = (ASTNode *)ptr;
     return ast_node->child1;
 }
 
@@ -31,7 +31,7 @@ char *func_def_argname(void *ptr, int n) {
     // check that n is within the number of args
     int nargs = func_def_nargs(ptr);
     if (0 < n && n <= nargs) {
-        ASTNode* ast_node = (ASTNode *) ptr;
+        ASTNode* ast_node = (ASTNode *)ptr;
 
         ASTNode* cur = ast_node;
         for (int i = n; i > 0; i--) cur = cur->child0;

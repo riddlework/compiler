@@ -1,6 +1,9 @@
 /* File: driver.c
  * Author: Maria Fay Garcia
- * Purpose: Implement a parser that checks the syntax for a G0 program
+ * Purpose: Implement a parser that
+ *   -- checks the syntax for the g2 programming language
+ *   -- builds symbol table and performs semantic checking
+ *   -- builds ast
  */
 
 
@@ -19,25 +22,47 @@ int parse() {
     // get the first token
     cur_tok = get_token();
 
+    // put println in the symbol table so program doesn't die
+    // (must do only when semantic checking is enable to avoid seg fault)
+    if (chk_decl_flag) {
+        symtab_entry *println = add_decl("println", FUNC);
+        println->num_args = 1;
+    }
+
     // start at the start symbol of the grammar
     prog();
 
+    if (gen_code_flag) do_code_gen_things();
+
     match(EOF);
+
     return 0;
+}
+
+void do_code_gen_things() {
+
+    // dump the global symbol table to mips
+    dump_glob_symtab();
+
+    // generate the code for println and main
+    gen_println_and_main();
+
+    // generate the code for function epilogues
+    gen_epilogue();
+
 }
 
 void prog() {
     cur_scope = GLOBAL;
     if (cur_tok == kwINT) {
         type();
-        char * lexeme_to_pass = lexeme;
+        char *lexeme_to_pass = lexeme;
         match(ID);
         decl_or_func(lexeme_to_pass);
         prog();
     }
 }
 
-// TODO: CHANGE THE WAY YOU KEEP TRACK OF NARGS
 void decl_or_func(char *passed_lexeme) {
     if (cur_tok == COMMA) {
         // VAR DECL
@@ -45,7 +70,7 @@ void decl_or_func(char *passed_lexeme) {
         // SEMANTIC CHECKING
 
         // add declaration to symbol table
-        add_decl(__func__, passed_lexeme, VAR, NULL);
+        add_decl(passed_lexeme, VAR);
 
         match(COMMA);
         id_list();
@@ -54,46 +79,50 @@ void decl_or_func(char *passed_lexeme) {
         // FUNCTION DECLARATION
 
         // initialize and zero out ast node
-        ASTNode *ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
-        ast_node->type = FUNC_DEF;
+        ASTNode *func = (ASTNode *) calloc(1, sizeof(ASTNode));
+        func->type = FUNC_DEF;
         
         // SEMANTIC CHECKING
 
         // add declaration to symbol table
-        symtab_entry *new_entry = add_decl(__func__, passed_lexeme, FUNC, NULL);
+        symtab_entry *new_entry = add_decl(passed_lexeme, FUNC);
 
         // FILL AST NODE
-        ast_node->symtab_entry = new_entry;
+        func->symtab_entry = new_entry;
 
         match(LPAREN);
         cur_scope = LOCAL;
 
-        ast_node->child0 = opt_formals(new_entry);
+        func->child0 = opt_formals();
         match(RPAREN);
         match(LBRACE);
         opt_var_decls();
         
         // add the body of the function to the AST
-        ast_node->child1 = opt_stmt_list();
+        func->child1 = opt_stmt_list();
 
         match(RBRACE);
 
-        cur_scope = GLOBAL;
+        // perform semantic checking if requested
+        if (chk_decl_flag) perform_semantic_checking(func);
 
         // print the AST if requested
-        if (print_ast_flag) { print_ast(ast_node); }
+        if (print_ast_flag) print_ast(func);
 
         // TODO: FREE AST HERE
 
-        // clear local symbol table
+        // generate the code if requested
+        if (gen_code_flag) gen_mips_code(func);
+
+        // pop the scope and clear local symbol table
         // TODO: free this memory -- clear local symbol table somewhere else?
+        cur_scope = GLOBAL;
         symtab_hds[LOCAL] = NULL;
 
     } else {
-        // SEMANTIC CHECKING
 
         // add the declaration to the symbol table
-        add_decl(__func__, passed_lexeme, VAR, NULL);
+        add_decl(passed_lexeme, VAR);
 
         match(SEMI);
     }
@@ -107,10 +136,8 @@ void var_decl() {
 
 void id_list() {
 
-    // SEMANTIC CHECKING
-
     // add declaration to symbol table
-    add_decl(__func__, lexeme, VAR, NULL);
+    add_decl(lexeme, VAR);
 
     match(ID);
     id_list_rest();
@@ -120,10 +147,8 @@ void id_list_rest() {
     if (cur_tok == COMMA) {
         match(COMMA);
 
-        // SEMANTIC CHECKING
-
         // add declaration to symbol table
-        add_decl(__func__, lexeme, VAR, NULL);
+        add_decl(lexeme, VAR);
 
         match(ID);
         id_list_rest();
@@ -134,34 +159,36 @@ void type() {
     match(kwINT);
 }
 
-// func_defn - symtab pointer for corresponding func decl
-ASTNode* opt_formals(symtab_entry *func_defn) {
+ASTNode* opt_formals() {
     if (cur_tok == kwINT) {
-        return formals(func_defn);
+        return formals();
     } return NULL;
 }
 
-// func_defn - symtab pointer for corresponding func decl
-ASTNode* formals(symtab_entry *func_defn) {
+ASTNode* formals() {
+
     // initialize and zero out ast node
     ASTNode* ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
     ast_node->type = EXPR_LIST;
 
     type();
 
-    // SEMANTIC CHECKING
-    symtab_entry *entry = add_decl(__func__, lexeme, VAR, func_defn);
+    // add delcaration to symbol table
+    if (chk_decl_flag) {
+        symtab_entry *entry = add_decl(lexeme, VAR);
+        entry->is_param = 1;
+        ast_node->symtab_entry = entry;
+    }
 
-    ast_node->symtab_entry = entry;
 
     match(ID);
-    ast_node->child0 = formals_rest(func_defn);
+    ast_node->child0 = formals_rest();
 
     return ast_node;
 }
 
-// entry - symtab pointer for corresponding func decl
-ASTNode* formals_rest(symtab_entry *func_defn) {
+ASTNode* formals_rest() {
+
     if (cur_tok == COMMA) {
         ASTNode* ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
         ast_node->type = EXPR_LIST;
@@ -169,19 +196,21 @@ ASTNode* formals_rest(symtab_entry *func_defn) {
         match(COMMA);
         type();
 
-        // SEMANTIC CHECKING
-
         // add declaration to symbol table
-        symtab_entry *entry = add_decl(__func__, lexeme, VAR, func_defn);
-        ast_node->symtab_entry = entry;
+        if (chk_decl_flag) {
+            symtab_entry *entry = add_decl(lexeme, VAR);
+            entry->is_param = 1;
+            ast_node->symtab_entry = entry;
+        }
 
         match(ID);
 
         // add the rest of the declarations
-        ast_node->child0 = formals_rest(func_defn);
+        ast_node->child0 = formals_rest();
 
         return ast_node;
     } return NULL;
+
 }
 
 void opt_var_decls() { 
@@ -208,10 +237,9 @@ ASTNode* opt_stmt_list() {
 ASTNode* stmt() {
     ASTNode* stmt = NULL;
     if (cur_tok == ID) {
-        // record lexeme for semantic checking
-        char * lexeme_to_pass = lexeme;
+        char *lexeme_to_pass = lexeme;
         match(ID);
-        stmt = fn_call_or_assg_stmt(lexeme_to_pass);
+        stmt = fn_call_or_assg_stmt(lexeme_to_pass, line_num, col_num);
         match(SEMI);
     } else if (cur_tok == kwWHILE) {
         stmt = while_stmt();
@@ -230,9 +258,15 @@ ASTNode* stmt() {
     return stmt;
 }
 
-ASTNode* fn_call_or_assg_stmt(char *passed_lexeme) {
+ASTNode* fn_call_or_assg_stmt(char *passed_lexeme, int line_num, int col_num) {
     // initialize and zero out ast node
     ASTNode* ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
+
+    // for semantic checking
+    ast_node->line_num = line_num;
+    ast_node->col_num  = col_num;
+    ast_node->lexeme   = passed_lexeme;
+    symtab_entry *entry = symtab_lookup(passed_lexeme);
 
     if (cur_tok == LPAREN) {
         // FUNCTION CALL
@@ -240,36 +274,13 @@ ASTNode* fn_call_or_assg_stmt(char *passed_lexeme) {
         // set type of ast node
         ast_node->type = FUNC_CALL;
 
-        // SEMANTIC CHECKING
-        symtab_entry *entry = NULL;
-        if (chk_decl_flag) {
-            entry = symtab_lookup(passed_lexeme);
-
-            if (!entry) {
-                // variable does not exist -- throw error
-                throw_error("Use before declaration of", __func__, VAR, passed_lexeme);
-            } else if (entry->type == VAR) {
-                // an int var tried to act as a function call
-                throw_error("Callee is not a", __func__, FUNC, passed_lexeme);
-            }
-        }
+        // add symtab_entry to AST
+        ast_node->symtab_entry = entry;
 
         match(LPAREN);
 
         // fill the ast with the arguments passed to the function
-        ast_node->child0 = opt_expr_list(entry);
-
-        // MORE SEMANTIC CHECKING
-        
-        // check that func is called with correct number of arguments
-        if (chk_decl_flag) {
-            if (entry->num_args_passed != entry->num_args) {
-                throw_error("Incorrect no. of arguments in call for", __func__, FUNC, passed_lexeme);
-            } entry->num_args_passed = 0; // reset after check
-        }
-
-        // set entry of ast node
-        ast_node->symtab_entry = entry;
+        ast_node->child0 = opt_expr_list();
 
         match(RPAREN);
     } else {
@@ -277,21 +288,10 @@ ASTNode* fn_call_or_assg_stmt(char *passed_lexeme) {
 
         // set type of ast node
         ast_node->type = ASSG;
+
+        // TODO: symtab_entry shouldn't be stored in ASTNode for ASSG...,
+        // but it's technically correct here since we only have IDs
         
-        // SEMANTIC CHECKING
-        symtab_entry* entry;
-        if (chk_decl_flag) {
-            entry = symtab_lookup(passed_lexeme);
-
-            if (!entry) {
-                // variable does not exist -- throw error
-                throw_error("Use before declaration of", __func__, VAR, passed_lexeme);
-            } else if (entry->type == FUNC) {
-                // trying to assign an int to a function
-                throw_error("Assignment LHS is a", __func__, FUNC, passed_lexeme);
-            }
-        }
-
         // set symtab entry field of ast node
         // this is the LHS of the assg stmt
         ast_node->symtab_entry = entry;
@@ -299,7 +299,7 @@ ASTNode* fn_call_or_assg_stmt(char *passed_lexeme) {
         match(opASSG);
 
         // fill the RHS of the assg stmt
-        ast_node->child0 = arith_exp(NULL);
+        ast_node->child0 = arith_exp();
     }
 
     return ast_node;
@@ -320,6 +320,7 @@ ASTNode* if_stmt() {
 
     return ast_node;
 }
+
 
 ASTNode* else_stmt() {
     // initialize and zero out ast node
@@ -357,96 +358,196 @@ ASTNode* return_stmt() {
 
 ASTNode* return_bdy() {
     if (cur_tok == SEMI) return NULL;
-    return arith_exp(NULL);
+    return arith_exp();
 }
 
-ASTNode* opt_expr_list(symtab_entry *func) {
+ASTNode* opt_expr_list() {
     if (cur_tok == RPAREN) return NULL;
-    return expr_list(func);
+    return expr_list();
 }
 
-ASTNode* expr_list(symtab_entry *func) {
+ASTNode* expr_list() {
     // initialize and zero out ast node
     ASTNode* ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
     ast_node->type = EXPR_LIST;
     
-    ast_node->child0 = arith_exp(func);
-    ast_node->child1 = rest_expr_list(func);
+    ast_node->child0 = arith_exp();
+    ast_node->child1 = rest_expr_list();
     
     return ast_node;
 }
 
-ASTNode* rest_expr_list(symtab_entry *func) {
+ASTNode* rest_expr_list() {
     if (cur_tok == COMMA) {
         // initialize and zero out ast node
         ASTNode* ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
         ast_node->type = EXPR_LIST;
 
         match(COMMA);
-        ast_node->child0 = arith_exp(func);
-        ast_node->child1 = rest_expr_list(func);
+        ast_node->child0 = arith_exp();
+        ast_node->child1 = rest_expr_list();
 
         return ast_node;
     } return NULL;
 }
 
 ASTNode* bool_exp() {
+    ASTNode *left = bool_exp_2();
+
+    while (cur_tok == opOR) {
+
+        match(opOR);
+
+        ASTNode *new_node = (ASTNode *)calloc(1, sizeof(ASTNode));
+        new_node->type = OR;
+        new_node->child0 = left;
+        new_node->child1 = bool_exp_2();
+
+        left = new_node;
+    } return left;
+}
+
+ASTNode* bool_exp_2() {
+    ASTNode *left = bool_exp_arith();
+
+    while (cur_tok == opAND) {
+
+        match(opAND);
+
+        ASTNode *new_node = (ASTNode *)calloc(1, sizeof(ASTNode));
+        new_node->type = AND;
+        new_node->child0 = left;
+        new_node->child1 = bool_exp_arith();
+
+        left = new_node;
+    } return left;
+
+}
+
+ASTNode* bool_exp_arith() {
     // initialize and zero out ast node
     ASTNode* ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
-    /*ast_node->type = EXPR_LIST;*/
 
-    ast_node->child0 = arith_exp(NULL);
+    ast_node->child0 = arith_exp();
     ast_node->type = relop();
-    ast_node->child1 = arith_exp(NULL);
+    ast_node->child1 = arith_exp();
     return ast_node;
 }
 
-ASTNode* arith_exp(symtab_entry *func) {
+ASTNode *arith_exp() {
+
+    ASTNode *left = arith_exp_2();
+
+    while (cur_tok == opADD || cur_tok == opSUB) {
+        // retrieve what type the AST node should be
+        int type = cur_tok == opADD ? ADD : SUB;
+
+        match(cur_tok);
+
+        ASTNode *new_node = (ASTNode *)calloc(1, sizeof(ASTNode));
+        new_node->type = type;
+        new_node->child0 = left;
+        new_node->child1 = arith_exp_2();
+
+        left = new_node;
+
+    } return left;
+
+}
+
+ASTNode* arith_exp_2() {
+
+    ASTNode *left = arith_exp_3();
+
+    while (cur_tok == opMUL || cur_tok == opDIV) {
+        // retrieve what type the AST node should be
+        int type = cur_tok == opMUL ? MUL : DIV;
+
+        match(cur_tok);
+
+        ASTNode *new_node = (ASTNode *)calloc(1, sizeof(ASTNode));
+        new_node->type = type;
+        new_node->child0 = left;
+        new_node->child1 = arith_exp_3();
+
+        left = new_node;
+
+    } return left;
+
+}
+
+ASTNode* arith_exp_3() {
+
+    if (cur_tok == opSUB) {
+        match(opSUB);
+
+        ASTNode *ast_node = (ASTNode *)calloc(1, sizeof(ASTNode));
+
+        ast_node->type = UMINUS;
+        ast_node->child0 = arith_exp_3();
+
+        return ast_node;
+
+    } else {
+        return arith_exp_4();
+    }
+
+}
+
+ASTNode* arith_exp_4() {
+
+    ASTNode *to_return;
+    if (cur_tok == LPAREN) {
+        match(LPAREN);
+        to_return = arith_exp();
+        match(RPAREN);
+    } else {
+        to_return = val();
+    } return to_return;
+
+}
+
+ASTNode* val() {
+
     // initialize and zero out ast node
     ASTNode* ast_node = (ASTNode *) calloc(1, sizeof(ASTNode));
 
+    // for semantic checking
+    ast_node->line_num = line_num;
+    ast_node->col_num  = col_num;
+    ast_node->lexeme   = lexeme;
+
     if (cur_tok == ID) {
-        // VAR
-        ast_node->type = IDENTIFIER;
 
-        // SEMANTIC CHECKING
-        symtab_entry *entry;
-        if (chk_decl_flag) {
+        // ID OR FUNC_CALL
 
-            entry = symtab_lookup(lexeme);
-
-            if (!entry) {
-                // variable does not exist -- throw error
-                throw_error("Use before declaration of", __func__, VAR, lexeme);
-            } else if (entry->type == FUNC) {
-                // arithmetic operation on a func -- throw error
-                throw_error("Arithmetic operation on a", __func__, FUNC, lexeme);
-            } else if (func) {
-                // increment the number of arguments passed to the function
-                func->num_args_passed++;
-            }
-        }
-
-        ast_node->symtab_entry = entry;
-
+        ast_node->symtab_entry = symtab_lookup(lexeme);
         match(ID);
-        
+
+        if (cur_tok == LPAREN) {
+            // FUNC CALL
+            ast_node->type = FUNC_CALL;
+
+            match(LPAREN);
+            ast_node->child0 = opt_expr_list();
+            match(RPAREN);
+        } else {
+            // ID
+            ast_node->type = IDENTIFIER;
+        }
     } else {
+
         // INTCON
         ast_node->type = INTCONST;
 
-        // increment number of arguments passed to function
-        if (chk_decl_flag && func) func->num_args_passed++;
-        
         // put integer constant in AST node
         ast_node->intcon = intcon;
         match(INTCON);
-    }
 
-    return ast_node;
+    } return ast_node;
+
 }
 
-// doesn't return ast... returns type maybe?
 // relop token different from ast nodetype
 int relop() {
     if (cur_tok == opEQ) {
@@ -473,7 +574,6 @@ int relop() {
 
 // check whether the current token matches the expected one
 void match(Token expected) {
-    /*printf("expected token: %d, cur token: %d, lexeme: %s\n", expected, cur_tok, lexeme);*/
     if (cur_tok == expected) {
         cur_tok = get_token();
     } else {
@@ -482,6 +582,4 @@ void match(Token expected) {
         exit(1);
     }
 }
-
-
 

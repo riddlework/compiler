@@ -1,0 +1,2 @@
+ERROR: LINE 5 [formals]: unexpected token kwINT [lexeme = int]
+exit status: 1
