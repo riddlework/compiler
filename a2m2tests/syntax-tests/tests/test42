@@ -1,1 +1,0 @@
-int f() { if (x > 0) if (y > 0) ; else ; }

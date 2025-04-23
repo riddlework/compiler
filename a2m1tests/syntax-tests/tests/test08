@@ -1,3 +1,0 @@
-int a(int u, int v, int w) { int x, y, z; }
-int b(int u, int v, int w) { int x, y, z; }
-int c(int u, int v, int w) { int x, y, z; }

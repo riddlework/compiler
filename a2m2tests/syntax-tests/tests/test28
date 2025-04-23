@@ -1,3 +1,0 @@
-int a(int u, int v) {
-    a(0, 1);    
-}

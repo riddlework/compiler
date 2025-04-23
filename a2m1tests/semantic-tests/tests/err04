@@ -1,3 +1,0 @@
-int x,
-    y,
-    x;    /* << x is multiply declared */

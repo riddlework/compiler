@@ -1,3 +1,0 @@
-/* local decls + {}-statement */
-
-int f() { int x, y; {} }

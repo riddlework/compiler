@@ -1,2 +1,0 @@
-int x,
-    x;  /* << x is multiple declared */

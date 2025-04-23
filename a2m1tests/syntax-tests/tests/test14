@@ -1,2 +1,0 @@
-int f(int x, int y, int z) { int u, v, w; int v, w, x; int x, y, z; f(); f(); }
-

@@ -1,6 +1,0 @@
-/* several functions, each with an empty body */
-int f() { }
-
-int g() { }
-
-int h() { }

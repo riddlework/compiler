@@ -1,1 +1,0 @@
-int f() { while (x > 0) ; }

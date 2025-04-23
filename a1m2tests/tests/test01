@@ -1,2 +1,0 @@
-/* a single function with an empty body */
-int f() { }
