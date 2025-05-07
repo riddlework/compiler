@@ -1,0 +1,6 @@
+1. concat_code needed to check for existence of src and src->code_head
+2. FUNC_CALL needed to make its place a stptr to the temp where the retval was stored
+3. in AND/OR, wrote child1 twice instead of child0, child1
+4. when changing AST/semantic checking last week, changed stmt_lists to head is child0 and
+    rest is child1, instead of everything child1, and forgot to change gen_param_instr
+5. copied mips instruction for store_retval (sw instr) wrong, switched reg/mem place

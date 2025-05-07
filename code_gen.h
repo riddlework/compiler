@@ -85,6 +85,5 @@ char *get_loc_string(symtab_entry *loc);
 int get_num_locals();
 void dump_glob_symtab();
 void gen_println_and_main();
-void gen_epilogue();
 
 #endif  /* __THREE_ADDR_H__ */

@@ -12,11 +12,11 @@ int lbl_num = 0;
  * a string indicating the corresponding three-address instruction
  */ 
 char *op_name[] = {
-    "+",
-    "-",
-    "-",
-    "/",
-    "*",
+    "add",
+    "neg",
+    "sub",
+    "div",
+    "mul",
     "=",
     "goto",
     "eq",
@@ -39,7 +39,8 @@ char *op_name[] = {
 void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
     if (!root) return;
     switch (root->type) {
-        case FUNC_DEF: {
+        case FUNC_DEF:
+        {
 
             // recursively generate the code for the function body
             // skip child 0, as it is just declarations
@@ -49,22 +50,27 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
              * dest  - operand f, the function being defined
              * enter - enter instruction
              * leave - leave instruction
+             * return - return instruction
              */
             Operand *dest = new_operand(STPTR, (void *)root->symtab_entry);
             Instr *enter = new_instr(OP_ENTER, NULL, NULL, dest);
             Instr *leave = new_instr(OP_LEAVE, NULL, NULL, dest);
+            Instr *ret   = new_instr(OP_RETURN, NULL, NULL, dest);
 
 
             // concatenate the three address code
             append_instr(root, enter);
             concat_code(root, root->child1);
             append_instr(root, leave);
+            append_instr(root, ret);
 
             // reset the tmp and lbl counters
             tmp_num = 0;
             break;
 
-        } case FUNC_CALL: {
+        }
+        case FUNC_CALL:
+        {
 
             // recursively generate the expr list code (params)
             gen_three_addr_code(root->child0, -1, -1);
@@ -87,99 +93,128 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
             // concatenate the call code
             append_instr(root, call);
 
-            // TODO: GET_RET_VAL
             // retrieve the return value
-            /*symtab_entry *tmp = new_temp();*/
-            /*Operand *dest = new_operand(STPTR, (void *)tmp);*/
-            /*Instr *retrieve = new_instr(OP_GET_RETVAL, NULL, NULL, dest);*/
-            /**/
-            /*// concatenate the retrieve instruction*/
-            /*append_instr(root, retrieve);*/
-            /**/
+            symtab_entry *temp = new_temp();
+            Operand *dest = new_operand(STPTR, (void *)temp);
+            Instr *retrieve = new_instr(OP_GET_RETVAL, NULL, NULL, dest);
+
+            // concatenate the retrieve instruction
+            append_instr(root, retrieve);
+
+            // update place to place of ret val
+            root->place = temp;
             break;
+        }
+        case IF:
+        {
+            /* LABEL TOMFOOLERY */
 
-        } case IF: {
+            // generate trueDst stuff (then)
+            int true_lbl_num = new_label();
+            Operand *true_dest = new_operand(LABEL, (void *)&true_lbl_num);
+            Instr *true_lbl_instr = new_instr(OP_LABEL, NULL, NULL, true_dest);
 
-            // generate label, operand, instr for false label (JUMP TO ELSE BLOCK)
-            int false = new_label();
-            Operand *false_dest = new_operand(LABEL, (void *)&false);
-            Instr *false_label = new_instr(OP_LABEL, NULL, NULL, false_dest);
+            // generate falseDst stuff (else)
+            int false_lbl_num = new_label();
+            Operand *false_dest = new_operand(LABEL, (void *)&false_lbl_num);
+            Instr *false_lbl_instr = new_instr(OP_LABEL, NULL, NULL, false_dest);
 
-            // generate label, operand, instr for after label (JUMP AFTER ELSE BLOCK)
-            int after = new_label();
-            Operand *after_dest = new_operand(LABEL, (void *)&after);
-            Instr *after_label = new_instr(OP_LABEL, NULL, NULL, after_dest);
-
-            // generate the code for the bool expr -- pass label
-            gen_three_addr_code(root->child0, -1, false);
-            
-
-            // concat the code for the bool expr
-            concat_code(root, root->child0);
-
-            // generate the code for the then body
-            gen_three_addr_code(root->child1, -1, -1);
-
-            // concat the code for the then body
-            concat_code(root, root->child1);
-
-            // generate code for jump to after else block
+            // generate after stuff
+            int after_lbl_num = new_label();
+            Operand *after_dest = new_operand(LABEL, (void *)&after_lbl_num);
+            Instr *after_lbl_instr = new_instr(OP_LABEL, NULL, NULL, after_dest);
             Instr *jump_after = new_instr(OP_GOTO, NULL, NULL, after_dest);
 
-            // append the jump instr
+            /* CODE GENERATION */
+
+            // for bool expr -- pass true/false labels
+            gen_three_addr_code(root->child0, true_lbl_num, false_lbl_num);
+
+            // then block
+            gen_three_addr_code(root->child1, -1, -1);
+
+            // else block
+            gen_three_addr_code(root->child2, -1, -1);
+
+
+            /* CONCATENATION */
+
+            // bool expr
+            concat_code(root, root->child0);
+
+            // label instr for true (then)
+            append_instr(root, true_lbl_instr);
+
+            // then block
+            concat_code(root, root->child1);
+
+            // append jump after instr
             append_instr(root, jump_after);
 
-            // append the label instr for the else block (if false)
-            append_instr(root, false_label);
-
-            // generate the code for the else body
-            gen_three_addr_code(root->child2, -1, -1);
+            // label instr for false (else)
+            append_instr(root, false_lbl_instr);
 
             // concat the code for the else body
             concat_code(root, root->child2);
 
             // append the label instr for after the else block
-            append_instr(root, after_label);
-
+            append_instr(root, after_lbl_instr);
             break;
         }
-        case WHILE: {
-            // generate label, operand, instr for false label (JUMP AFTER WHILE LOOP)
-            int false = new_label();
-            Operand *false_dest = new_operand(LABEL, (void *)&false);
-            Instr *false_label = new_instr(OP_LABEL, NULL, NULL, false_dest);
+        case WHILE:
+        {
+            /* LABEL TOMFOOLERY */
 
-            // generate label, operand, instr for loop label (JUMP TO TOP OF WHILE LOOP)
-            int loop = new_label();
-            Operand *loop_dest = new_operand(LABEL, (void *)&loop);
-            Instr *loop_label = new_instr(OP_LABEL, NULL, NULL, loop_dest);
+            // generate top stuff
+            int top_lbl_num = new_label();
+            Operand *top_dest = new_operand(LABEL, (void *)&top_lbl_num);
+            Instr *top_lbl_instr = new_instr(OP_LABEL, NULL, NULL, top_dest);
+            Instr *jump_top = new_instr(OP_GOTO, NULL, NULL, top_dest);
 
-            // append loop label instr
-            append_instr(root, loop_label);
+            // generate trueDst stuff (body)
+            int true_lbl_num = new_label();
+            Operand *true_dest = new_operand(LABEL, (void *)&true_lbl_num);
+            Instr *true_lbl_instr = new_instr(OP_LABEL, NULL, NULL, true_dest);
 
-            // generate the code for the bool expr -- pass label
-            gen_three_addr_code(root->child0, -1, false);
+            // generate falseDst stuff (after)
+            int false_lbl_num = new_label();
+            Operand *false_dest = new_operand(LABEL, (void *)&false_lbl_num);
+            Instr *false_lbl_instr = new_instr(OP_LABEL, NULL, NULL, false_dest);
 
-            // concat the code for the bool expr
-            concat_code(root, root->child0);
 
-            // generate the code for the body of the while loop
+            /* CODE GENERATION */
+
+            // bool expr -- pass true/false labels
+            gen_three_addr_code(root->child0, true_lbl_num, false_lbl_num);
+
+            // body
             gen_three_addr_code(root->child1, -1, -1);
 
-            // concat the code for the body
+            
+            /* CONCATENATION */
+
+            // top label
+            append_instr(root, top_lbl_instr);
+
+            // bool expr
+            concat_code(root, root->child0);
+
+            // body label
+            append_instr(root, true_lbl_instr);
+
+            // body code
             concat_code(root, root->child1);
 
-            // make jump instr for top of loop
-            Instr *goto_loop = new_instr(OP_GOTO, NULL, NULL, loop_dest);
-            // append jump instr
-            append_instr(root, goto_loop);
+            // jump to top
+            append_instr(root, jump_top);
 
-            // append label instr for after while loop (if bool_exp fails)
-            append_instr(root, false_label);
-            
+            // after label
+            append_instr(root, false_lbl_instr);
+
             break;
         }
-        case ASSG: {
+        case ASSG:
+        {
             // 1. LHS evaluation is trivial because it is always an id
             //      thus code is NULL
             // 2. evaluate RHS
@@ -202,7 +237,8 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
             append_instr(root, assg);
             break;
         }
-        case RETURN: {
+        case RETURN:
+        {
             // generate the code for the body of the return statement
             gen_three_addr_code(root->child0, -1, -1);
 
@@ -212,23 +248,23 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
             // move the place up
             if (root->child0) root->place = root->child0->place;
 
-            // TODO: SET RETVAL
-            // create a new set_retval instruction
-            /*Operand *src = new_operand(STPTR, (void *)root->place);*/
-            /*Instr *set_retval = new_instr(OP_SET_RETVAL, src, NULL, NULL);*/
-            /**/
-            /*// concat the instruction*/
-            /*append_instr(root, set_retval);*/
-            /**/
+            // create and append retval instruction
+            Operand *src = new_operand(STPTR, (void *)root->place);
+            Instr *set_retval_instr = new_instr(OP_SET_RETVAL, src, NULL, NULL);
+            append_instr(root, set_retval_instr);
 
-            // create return instruction
+            // create and append leave instruction
+            Instr *leave_instr = new_instr(OP_LEAVE, NULL, NULL, NULL);
+            append_instr(root, leave_instr);
+            
+            // create and append return instruction
             Instr *ret_instr = new_instr(OP_RETURN, NULL, NULL, NULL);
-
-            // concat
             append_instr(root, ret_instr);
 
             break;
-        } case STMT_LIST: {
+        }
+        case STMT_LIST:
+        {
             // recursively generate the code for the statement
             gen_three_addr_code(root->child0, -1, -1);
 
@@ -240,8 +276,9 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
             concat_code(root, root->child1);
 
             break;
-        } case EXPR_LIST: {
-
+        }
+        case EXPR_LIST:
+        {
             // recursively generate the code for the arith_exp
             gen_three_addr_code(root->child0, -1, -1);
 
@@ -252,17 +289,19 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
             concat_code(root, root->child0);
             concat_code(root, root->child1);
 
-            // TODO: MIGHT CAUSE BUGS
             root->place = root->child0->place;
             break;
-
-        } case IDENTIFIER: {
+        }
+        case IDENTIFIER:
+        {
             // code: NULL
             // place: symtab_entry
             root->place = root->symtab_entry;
             break;
 
-        } case INTCONST: {
+        }
+        case INTCONST:
+        {
             // code: tmp = intcon
             // place: tmp's place in symbol table
             
@@ -283,30 +322,36 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
             append_instr(root, instr);
             root->place = tmp_stptr;
             break;
-
         }
-        // swap the bool in the three-addr code gen, so translation is straightforward
+        // swap the bool in the three-addr code gen, so translation to mips is simple
         case EQ:
         case NE:
         case LT:
         case LE:
         case GT:
-        case GE: {
+        case GE:
+        {
+            // create label operands
+            Operand *true_dest = new_operand(LABEL, (void *)&trueDst);
+            Operand *false_dest = new_operand(LABEL, (void *)&falseDst);
 
-            // generate code for LHS
+            /* CODE GENERATION */
+
+            // LHS
             gen_three_addr_code(root->child0, -1, -1);
 
-            // concat the code
-            concat_code(root, root->child0);
-            
-            // generate code for RHS
+            // RHS
             gen_three_addr_code(root->child1, -1, -1);
 
-            // concat the code
+            /* CONCATENATION */
+            
+            // LHS
+            concat_code(root, root->child0);
+
+            // RHS
             concat_code(root, root->child1);
 
-            // create label operand
-            Operand *false_dest = new_operand(LABEL, (void *)&falseDst);
+
             /*
              * src1 - LHS
              * src2 - RHS
@@ -314,21 +359,107 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
              */
             Operand *src1 = new_operand(STPTR, (void *)root->child0->place);
             Operand *src2 = new_operand(STPTR, (void *)root->child1->place);
-
             OpType op_type = get_opposite_type(root->type);
-            Instr *instr = new_instr(op_type, src1, src2, false_dest);
 
-            // append instruction
-            append_instr(root, instr);
+
+            // generate comparison instr, jump to false if true (opposite)
+            Instr *comp_instr = new_instr(op_type, src1, src2, false_dest);
+
+            // jump to true if we get here
+            Instr *jump_true = new_instr(OP_GOTO, NULL, NULL, true_dest);
+
+            // append comparison instr
+            append_instr(root, comp_instr);
+
+            // append jump instr
+            append_instr(root, jump_true);
             break;
         }
-        case ADD: // not yet
-        case SUB: // not yet
-        case MUL: // not yet
-        case DIV: // not yet
-        case UMINUS: // not yet
-        case AND: // not yet
-        case OR: // not yet
+        case ADD:
+        case SUB:
+        case MUL:
+        case DIV:
+        {
+            /* CODE GENERATION */
+            gen_three_addr_code(root->child0, -1, -1); // LHS
+            gen_three_addr_code(root->child1, -1, -1); // RHS
+
+            /* CONCATENATION */
+            concat_code(root, root->child0); // LHS
+            concat_code(root, root->child1); // RHS
+
+            // create a new temp which will store the result of the expr
+            symtab_entry *temp = new_temp();
+
+            /*
+             * src1 - LHS
+             * src2 - RHS
+             * dest - place of root
+             * type - the OpType (based on NodeType)
+             */
+            Operand *src1 = new_operand(STPTR, (void *)root->child0->place);
+            Operand *src2 = new_operand(STPTR, (void *)root->child1->place);
+            Operand *dest = new_operand(STPTR, (void *)temp);
+            OpType op_type = get_type(root->type);
+
+            Instr *arith_instr = new_instr(op_type, src1, src2, dest);
+
+            append_instr(root, arith_instr);
+
+            // update place
+            root->place = temp;
+            break;
+        }
+        case UMINUS:
+        {
+            /* CODE GENERATION */
+            gen_three_addr_code(root->child0, -1, -1);
+
+            /* CONCATENATION */
+            concat_code(root, root->child0);
+            
+            // create a new temp which will store the result of the expr
+            symtab_entry *temp = new_temp();
+
+            /* 
+             * src  - RHS
+             * dest - place of root
+             */
+            Operand *src  = new_operand(STPTR, (void *)root->child0->place);
+            Operand *dest = new_operand(STPTR, (void *)temp);
+
+            Instr *unary_instr = new_instr(OP_UNARY_MINUS, src, NULL, dest);
+
+            append_instr(root, unary_instr);
+
+            // update place
+            root->place = temp;
+            break;
+        }
+        case AND:
+        case OR:
+        {
+            /* LABEL TOMFOOLERY */
+
+            // make intermediate label
+            int int_lbl_num = new_label();
+            Operand *int_lbl_dest = new_operand(LABEL, (void *)&int_lbl_num);
+            Instr *jump_lbl_instr = new_instr(OP_LABEL, NULL, NULL, int_lbl_dest);
+
+            /* CODE GENERATION */
+            int trueDst_int  = root->type == AND ? int_lbl_num : trueDst;
+            int falseDst_int = root->type == AND ? falseDst : int_lbl_num;
+
+            gen_three_addr_code(root->child0, trueDst_int, falseDst_int);
+            gen_three_addr_code(root->child1, trueDst, falseDst);
+
+
+            /* CONCATENATION */
+            concat_code(root, root->child0);
+            append_instr(root, jump_lbl_instr);
+            concat_code(root, root->child1);
+            break;
+        }
         default:
             break;
     }
@@ -337,7 +468,7 @@ void gen_three_addr_code(ASTNode *root, int trueDst, int falseDst) {
 void gen_param_instr(ASTNode *concat_to, ASTNode *expr_head) {
     if (expr_head) {
         gen_param_instr(concat_to, expr_head->child1);
-        symtab_entry *param_stptr = expr_head->child1->place;
+        symtab_entry *param_stptr = expr_head->child0->place;
         Operand *src = new_operand(STPTR, (void *)param_stptr);
         Instr *param = new_instr(OP_PARAM, src, NULL, NULL);
         append_instr(concat_to, param);
@@ -346,20 +477,17 @@ void gen_param_instr(ASTNode *concat_to, ASTNode *expr_head) {
 
 OpType get_type(NodeType type) {
     switch (type) {
-        case EQ:
-            return OP_EQ;
-        case NE:
-            return OP_NE;
-        case LT:
-            return OP_LT;
-        case LE:
-            return OP_LE;
-        case GE:
-            return OP_GE;
-        case GT:
-            return OP_GT;
+        case ADD:
+            return OP_PLUS;
+        case SUB:
+            return OP_MINUS;
+        case MUL:
+            return OP_MUL;
+        case DIV:
+            return OP_DIV;
         default:
             // dummy value, execution should never get to this point
+            printf("you shouldn't be here...\n");
             return OP_RETURN;
     }
 }
@@ -380,14 +508,14 @@ OpType get_opposite_type(NodeType type) {
             return OP_LE;
         default:
             // dummy value, execution should never get to this point
+            printf("you shouldn't be here...\n");
             return OP_RETURN;
     }
-
 }
 
 
 // generate a new operand
-// TODO: CHANGE FROM DEREFERENCE TO JUST CASTING TO INT?
+// TODO: change to cast instead of dereference
 Operand *new_operand(OperandType operand_type, void *val) {
     Operand *newop = (Operand *)calloc(1, sizeof(Operand));
     newop->operand_type = operand_type;
@@ -433,7 +561,7 @@ void concat_code(ASTNode *dest, ASTNode *src) {
         // just copy head/tail ptrs from src
         dest->code_head = src->code_head;
         dest->code_tail = src->code_tail;
-    } else if (src) {
+    } else if (src && src->code_head) {
         // code exists...
         // append and set pointers appropriately
         dest->code_tail->next = src->code_head;
@@ -471,20 +599,34 @@ void print_three_addr_code(ASTNode *root) {
 // print the three address code for a given instruction
 // as comments
 void print_three_addr_instr(Instr *instr) {
-    //print
     printf("# ");
     switch (instr->op) {
-        case OP_PLUS: // not yet
-        case OP_UNARY_MINUS: // not yet 
-        case OP_MINUS: // not yet
-        case OP_DIV: // not yet
-        case OP_MUL: // not yet 
-        case OP_ASSG: {
+        case OP_PLUS:
+        case OP_MINUS:
+        case OP_DIV:
+        case OP_MUL:
+        {
+            char *lhs  = get_val_string(instr->src1);
+            char *rhs  = get_val_string(instr->src2);
+            char *dest = get_val_string(instr->dest);
+            printf("%s := %s %s %s\n", dest, lhs, op_name[instr->op], rhs);
+            break;
+        }
+        case OP_UNARY_MINUS: 
+        {
+            char *src  = get_val_string(instr->src1);
+            char *dest = get_val_string(instr->dest);
+            printf("%s := -%s\n", dest, src);
+            break;
+        }
+        case OP_ASSG:
+        {
             char *lhs = get_val_string(instr->dest);
             char *rhs = get_val_string(instr->src1);
             printf("%s %s %s\n", lhs, op_name[instr->op], rhs);
             break;
-        } case OP_GOTO: {
+        }
+        case OP_GOTO: {
             char *label = get_val_string(instr->dest);
             printf("goto %s\n", label);
             break;
@@ -494,39 +636,64 @@ void print_three_addr_instr(Instr *instr) {
         case OP_LT:
         case OP_LE:
         case OP_GT:
-        case OP_GE: {
+        case OP_GE:
+        {
             char *lhs = get_val_string(instr->src1);
             char *rhs = get_val_string(instr->src2);
             printf("%s %s %s\n", lhs, op_name[instr->op], rhs);
             break;
-        } case OP_LABEL: {
+        }
+        case OP_LABEL:
+        {
             char *label = get_val_string(instr->dest);
             printf("label %s\n", label);
             break;
-        } case OP_ENTER: {
+        }
+        case OP_ENTER:
+        {
             char *func = get_val_string(instr->dest);
             printf("enter %s\n", func);
             break;
-        } case OP_LEAVE: {
-            char *func = get_val_string(instr->dest);
-            printf("leave %s\n", func);
+        }
+        case OP_LEAVE:
+        {
+            printf("leave ");
+            if (instr->dest) {
+                char *func = get_val_string(instr->dest);
+                printf("%s", func);
+            } printf("\n");
             break;
-        } case OP_PARAM: {
+        }
+        case OP_PARAM:
+        {
             char *id = get_val_string(instr->src1);
             printf("param %s\n", id);
             break;
-        } case OP_CALL: {
+        }
+        case OP_CALL:
+        {
             char *func_name = get_val_string(instr->src1);
             char *num_args = get_val_string(instr->src2);
             printf("call %s, %s\n", func_name, num_args);
             break;
-        } case OP_RETURN: {
+        }
+        case OP_RETURN:
+        {
             printf("return\n");
             break;
         }
-        case OP_SET_RETVAL: // not yet
-        case OP_GET_RETVAL: // not yet
+        case OP_SET_RETVAL:
+        {
+            char *src = get_val_string(instr->src1);
+            printf("set_retval %s\n", src);
             break;
+        }
+        case OP_GET_RETVAL:
+        {
+            char *dest = get_val_string(instr->dest);
+            printf("get_retval %s\n", dest);
+            break;
+        }
     }
 }
 
@@ -579,7 +746,7 @@ void gen_mips_code(ASTNode* root) {
 
     // print the three address code for the function
     // in comments above the corresponding mips code
-    /*print_three_addr_code(root);*/
+    // print_three_addr_code(root);
 
     // translate each three address intruction to mips
     Instr *cur_instr = root->code_head;
@@ -593,12 +760,56 @@ void gen_mips_code(ASTNode* root) {
 
 void translate_three_addr_code(Instr *instr) {
     switch (instr->op) {
-        case OP_PLUS: // not yet
-        case OP_UNARY_MINUS: // not yet 
-        case OP_MINUS: // not yet
-        case OP_DIV: // not yet
-        case OP_MUL: // not yet 
-        case OP_ASSG: {
+        case OP_PLUS:
+        case OP_MINUS:
+        case OP_DIV:
+        case OP_MUL:
+        {
+            // unpack the operands
+            Operand *src1 = instr->src1;
+            Operand *src2 = instr->src2;
+            Operand *dest = instr->dest;
+
+            // get the loc strings
+            char *src1_loc_string = get_loc_string(src1->val.symtab_ptr);
+            char *src2_loc_string = get_loc_string(src2->val.symtab_ptr);
+            char *dest_loc_string = get_loc_string(dest->val.symtab_ptr);
+
+            printf(
+                    "lw $t0, %s\n"
+                    "lw $t1, %s\n"
+                    "%s $t2, $t0, $t1\n"
+                    "sw $t2, %s\n",
+                    src1_loc_string,
+                    src2_loc_string,
+                    op_name[instr->op],
+                    dest_loc_string
+                  );
+            printf("\n");
+            break;
+        }
+        case OP_UNARY_MINUS:
+        {
+            // unpack the operands
+            Operand *src  = instr->src1;
+            Operand *dest = instr->dest;
+
+            // get the loc strings
+            char *src_loc_string  = get_loc_string(src->val.symtab_ptr);
+            char *dest_loc_string = get_loc_string(dest->val.symtab_ptr);
+
+            printf(
+                    "lw $t0, %s\n"
+                    "neg $t1, $t0\n"
+                    "sw $t1, %s\n",
+                    src_loc_string,
+                    dest_loc_string
+                  );
+            printf("\n");
+            break;
+        }
+        case OP_ASSG:
+        {
             // unpack the operands
             /*
              * src - either ICONST or VAR
@@ -607,7 +818,6 @@ void translate_three_addr_code(Instr *instr) {
             Operand *src = instr->src1;
             Operand *dest = instr->dest;
             
-
             /*
              * VAR: lw
              * ICONST: li
@@ -629,7 +839,8 @@ void translate_three_addr_code(Instr *instr) {
             printf("sw $t0, %s\n", dest_loc_string);
             printf("\n");
             break;
-        } case OP_GOTO: {
+        }
+        case OP_GOTO: {
             Operand *dest = instr->dest;
             int label = dest->val.label;
             printf("j L%d\n", label);
@@ -641,7 +852,8 @@ void translate_three_addr_code(Instr *instr) {
         case OP_LT:
         case OP_LE:
         case OP_GT:
-        case OP_GE:{
+        case OP_GE:
+        {
             Operand *src1 = instr->src1;
             Operand *src2 = instr->src2;
             Operand *dest = instr->dest;
@@ -658,13 +870,17 @@ void translate_three_addr_code(Instr *instr) {
                     );
             printf("\n");
             break;
-       } case OP_LABEL: {
+        }
+        case OP_LABEL:
+        {
             Operand *dest = instr->dest;
             int label = dest->val.label;
             printf("L%d:\n", label);
             printf("\n");
             break;
-       } case OP_ENTER: {
+        }
+        case OP_ENTER:
+        {
             // generate function prologue
             
             // retrieve the name of the function
@@ -701,11 +917,28 @@ void translate_three_addr_code(Instr *instr) {
                     );
             printf("\n");
             break;
-        } case OP_LEAVE: {
-            printf("j epilogue\n");
+        }
+        case OP_LEAVE:
+        {
+            // generate the function epilogue
+            /*
+             * 1. deallocate locals
+             * 2. restore return address
+             * 3. restore frame pointer
+             * 4. restore stack pointer
+             * 5. return to caller
+             */
+            printf(
+                    "# EPILOGUE\n"
+                    "la $sp, 0($fp)\n"
+                    "lw $ra, 0($sp)\n"
+                    "lw $fp, 4($sp)\n"
+                    "la $sp, 8($sp)\n"
+                  );
             printf("\n");
             break;
-        } case OP_PARAM: {
+        }
+        case OP_PARAM: {
 
             char *loc_string = get_loc_string(instr->src1->val.symtab_ptr);
 
@@ -722,7 +955,9 @@ void translate_three_addr_code(Instr *instr) {
                    );
             printf("\n");
             break;
-        } case OP_CALL: {
+        }
+        case OP_CALL:
+        {
 
             // retrieve name of function
             char *func = get_val_string(instr->src1);
@@ -743,21 +978,24 @@ void translate_three_addr_code(Instr *instr) {
             printf("\n");
             break;
         }
-        case OP_RETURN: {
-            printf("j epilogue\n");
+        case OP_RETURN:
+        {
+            // generate return jump instruction
+            printf("jr $ra\n");
             printf("\n");
             break;
-        } case OP_SET_RETVAL: {
-            // TODO:
-            /*char *src_loc_string = get_loc_string(instr->src1->val.symtab_ptr);*/
-            /*printf("lw %s, $v0\n", src_loc_string);*/
-            /*printf("\n");*/
+        }
+        case OP_SET_RETVAL: {
+            char *src_loc_string = get_loc_string(instr->src1->val.symtab_ptr);
+            printf("lw $v0, %s\n", src_loc_string);
+            printf("\n");
             break;
-        } case OP_GET_RETVAL: {
-            // TODO:
-            /*char *dest_loc_string = get_loc_string(instr->dest->val.symtab_ptr);*/
-            /*printf("sw $v0, %s\n", dest_loc_string);*/
-            /*printf("\n");*/
+        }
+        case OP_GET_RETVAL: {
+            // TODO: this might cause bugs
+            char *dest_loc_string = get_loc_string(instr->dest->val.symtab_ptr);
+            printf("sw $v0, %s\n", dest_loc_string);
+            printf("\n");
             break;
         }
     }
@@ -829,26 +1067,5 @@ void gen_println_and_main() {
            ".text\n"
            "main: j _main\n"
            "\n"
-           );
-
-}
-
-void gen_epilogue() {
-    // generate function epilogue
-    /*
-     * 1. deallocate locals
-     * 2. restore return address
-     * 3. restore frame pointer
-     * 4. restore stack pointer
-     * 5. return to caller
-     */
-    printf(
-            "epilogue:\n"
-            "# EPILOGUE\n"
-            "la $sp, 0($fp)\n"
-            "lw $ra, 0($sp)\n"
-            "lw $fp, 4($sp)\n"
-            "la $sp, 8($sp)\n"
-            "jr $ra\n"
           );
 }

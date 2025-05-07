@@ -43,10 +43,31 @@ important slides:
 from code generation 1
     -- 54: for when we need return statements
 
-TODO:
-1. change if statements to L_then, L_else, L_after format
-2. change while loops to L_top, L_body, L_after format
-
-
 current mistake is either in get_retval, set_retval, or return
 do we need "jr $ra" in return *and* leave?
+
+
+
+TODO:
+
+IF: trueDst (then), falseDst (else), after
+WHILE: trueDst (body), falseDst (after), top
+
+3-addr code gen:
+1. FUNC_CALL: GET_RET_VAL -- DONE, MIGHT CAUSE BUGS
+2. IF: Change labels to L_then, L_else, L_after -- DONE
+3. WHILE: Change labels to L_top, L_body, L_after -- DONE
+4. RETURN: SET_RET_VAL -- DONE, MIGHT CAUSE BUGS
+
+5. EQ/NE/LT/LE/GT/GE: trueDst and falseDst -- using falseDst, but how to use truDst?
+5. ADD/SUB/MUL/DIV
+6. UMINUS
+7. AND/OR -- trueDst and falseDst
+
+asm code gen:
+1. change LEAVE instructions -- DONE
+2. change RETURN instructions? -- DONE
+3. GET_RETVAL, SET_RETVAL?
+
+QUESTIONS:
+1. do we need jr $ra in RETURN and LEAVE? (GET_RETVAL, SET_RETVAL, RETURN....)

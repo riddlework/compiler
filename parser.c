@@ -40,16 +40,11 @@ int parse() {
 }
 
 void do_code_gen_things() {
-
     // dump the global symbol table to mips
     dump_glob_symtab();
 
     // generate the code for println and main
     gen_println_and_main();
-
-    // generate the code for function epilogues
-    gen_epilogue();
-
 }
 
 void prog() {
@@ -179,7 +174,6 @@ ASTNode* formals() {
         entry->is_param = 1;
         ast_node->symtab_entry = entry;
     }
-
 
     match(ID);
     ast_node->child0 = formals_rest();
